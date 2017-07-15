@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	_redisConfig *redlock.RedisConfig
+	_redisConfig    *redlock.RedisConfig
+	DefaultSettings *Settings
 )
 
 func init() {
@@ -18,6 +19,13 @@ func init() {
 		KeyPrefix:      "gorlock",
 		ConnectTimeout: 30 * time.Second,
 	}
+	DefaultSettings = &Settings{
+		LockTimeout: 15 * time.Second,
+	}
+}
+
+type Settings struct {
+	LockTimeout time.Duration
 }
 
 func SetRedisConfig(config *redlock.RedisConfig) {
@@ -36,8 +44,7 @@ func New() *redlock.Redlock {
 // Acquire a lock and returns it, need to unlock it when done
 func Acquire(key string) (*redlock.Redlock, error) {
 	lock := New()
-	timeout := 15 * time.Second
-	acquired, err := lock.Lock(key, timeout)
+	acquired, err := lock.Lock(key, DefaultSettings.LockTimeout)
 	if err != nil {
 		return nil, err
 	}
