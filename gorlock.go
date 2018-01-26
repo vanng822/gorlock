@@ -23,13 +23,13 @@ func init() {
 	DefaultSettings = &Settings{
 		LockTimeout:   15 * time.Second,
 		LockWaiting:   false,
-		RetryTimeout:  5 * time.Second,
+		RetryTimeout:  15 * time.Second,
 		RetryInterval: 150 * time.Millisecond,
 	}
 	LockWaitingDefaultSettings = &Settings{
 		LockTimeout:   15 * time.Second,
 		LockWaiting:   true,
-		RetryTimeout:  5 * time.Second,
+		RetryTimeout:  15 * time.Second,
 		RetryInterval: 150 * time.Millisecond,
 	}
 }
