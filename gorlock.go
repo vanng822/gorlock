@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	_redisConfig    *redlock.RedisConfig
-	DefaultSettings *Settings
+	_redisConfig               *redlock.RedisConfig
+	DefaultSettings            *Settings
+	LockWaitingDefaultSettings *Settings
 )
 
 func init() {
@@ -20,12 +21,24 @@ func init() {
 		ConnectTimeout: 30 * time.Second,
 	}
 	DefaultSettings = &Settings{
-		LockTimeout: 15 * time.Second,
+		LockTimeout:   15 * time.Second,
+		LockWaiting:   false,
+		RetryTimeout:  5 * time.Second,
+		RetryInterval: 150 * time.Millisecond,
+	}
+	LockWaitingDefaultSettings = &Settings{
+		LockTimeout:   15 * time.Second,
+		LockWaiting:   true,
+		RetryTimeout:  5 * time.Second,
+		RetryInterval: 150 * time.Millisecond,
 	}
 }
 
 type Settings struct {
-	LockTimeout time.Duration
+	LockTimeout   time.Duration
+	RetryTimeout  time.Duration
+	RetryInterval time.Duration
+	LockWaiting   bool
 }
 
 func SetRedisConfig(config *redlock.RedisConfig) {
@@ -42,21 +55,54 @@ func New() *redlock.Redlock {
 }
 
 // Acquire a lock and returns it, need to unlock it when done
-func Acquire(key string) (*redlock.Redlock, error) {
-	lock := New()
-	acquired, err := lock.Lock(key, DefaultSettings.LockTimeout)
+func Acquire(key string, settings *Settings) (*redlock.Redlock, error) {
+	var (
+		acquired bool
+		err      error
+		lock     *redlock.Redlock
+	)
+	lock = New()
+	acquired, err = lock.Lock(key, settings.LockTimeout)
 	if err != nil {
 		return nil, err
 	}
+
+	if settings.LockWaiting && !acquired {
+		timesup := time.After(settings.RetryTimeout)
+		for !acquired {
+			select {
+			case <-timesup:
+				return nil, fmt.Errorf("Time's up! Can not acquire lock key: %s", key)
+			default:
+				time.Sleep(settings.RetryInterval)
+			}
+			acquired, err = lock.Lock(key, settings.LockTimeout)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if !acquired {
 		return nil, fmt.Errorf("Can not acquire lock key: %s", key)
 	}
 	return lock, nil
 }
 
-// Run ..
+// Run executes the job if a lock is acquired
 func Run(key string, fn func() error) error {
-	lock, err := Acquire(key)
+	lock, err := Acquire(key, DefaultSettings)
+	if err != nil {
+		return err
+	}
+	defer lock.Unlock(key)
+	return fn()
+}
+
+// RunWaiting waits until acquiring a lock
+// and execute the job
+func RunWaiting(key string, fn func() error) error {
+	lock, err := Acquire(key, LockWaitingDefaultSettings)
 	if err != nil {
 		return err
 	}
