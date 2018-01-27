@@ -23,10 +23,11 @@ func TestRunError(t *testing.T) {
 
 func testingDoBlock(key string, timeout time.Duration, done chan bool) {
 	// should use Lock directly
-	l, _ := Acquire(key, DefaultSettings)
+	lock := New()
+	lock.Lock(key, 2*timeout)
 	go func() {
 		time.Sleep(timeout)
-		l.Unlock(key)
+		lock.Unlock(key)
 		done <- true
 	}()
 }
