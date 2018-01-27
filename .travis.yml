@@ -1,0 +1,19 @@
+language: golang
+
+go:
+  - tip
+
+env:
+  global:
+  - GOPATH="$HOME/gopath"
+  - PATH="$HOME/gopath/bin:$HOME/bin:$PATH"
+
+install:
+  - go get github.com/gpitfield/redlock
+  - go get github.com/stretchr/testify/assert
+
+services:
+  - redis-server
+
+script:
+  - go test -v
