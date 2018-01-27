@@ -82,7 +82,8 @@ func TestConnectionError(t *testing.T) {
 	}
 	lock, err := Acquire(key, DefaultSettings)
 	assert.Nil(t, lock)
-	assert.EqualError(t, err, "dial tcp [::1]:6390: getsockopt: connection refused")
+	assert.Error(t, err)
+	assert.Regexp(t, "6390: getsockopt: connection refused", err.Error())
 	<-done
 }
 
