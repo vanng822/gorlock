@@ -77,13 +77,13 @@ func Acquire(key string, settings *Settings) (*redlock.Redlock, error) {
 				return nil, fmt.Errorf("Time's up! Can not acquire lock key: %s", key)
 			default:
 				time.Sleep(settings.RetryInterval)
-			}
-			acquired, err = lock.Lock(key, settings.LockTimeout)
-			if err != nil {
-				return nil, err
-			}
-			if acquired {
-				return lock, nil
+				acquired, err = lock.Lock(key, settings.LockTimeout)
+				if err != nil {
+					return nil, err
+				}
+				if acquired {
+					return lock, nil
+				}
 			}
 		}
 	}
