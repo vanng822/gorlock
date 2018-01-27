@@ -66,10 +66,12 @@ func Acquire(key string, settings *Settings) (*redlock.Redlock, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	if settings.LockWaiting && !acquired {
+	if acquired {
+		return lock, nil
+	}
+	if settings.LockWaiting {
 		timesup := time.After(settings.RetryTimeout)
-		for !acquired {
+		for {
 			select {
 			case <-timesup:
 				return nil, fmt.Errorf("Time's up! Can not acquire lock key: %s", key)
@@ -80,13 +82,12 @@ func Acquire(key string, settings *Settings) (*redlock.Redlock, error) {
 			if err != nil {
 				return nil, err
 			}
+			if acquired {
+				return lock, nil
+			}
 		}
 	}
-
-	if !acquired {
-		return nil, fmt.Errorf("Can not acquire lock key: %s", key)
-	}
-	return lock, nil
+	return nil, fmt.Errorf("Can not acquire lock key: %s", key)
 }
 
 // Run executes the job if a lock is acquired
