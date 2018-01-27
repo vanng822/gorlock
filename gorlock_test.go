@@ -21,7 +21,7 @@ func TestRunError(t *testing.T) {
 	}), "run is not ok")
 }
 
-func doBlock(key string, timeout time.Duration, done chan bool) {
+func testingDoBlock(key string, timeout time.Duration, done chan bool) {
 	// should use Lock directly
 	l, _ := Acquire(key, DefaultSettings)
 	go func() {
@@ -37,7 +37,7 @@ func TestRunWaitingOk(t *testing.T) {
 	defer func() {
 		<-done
 	}()
-	doBlock(key, LockWaitingDefaultSettings.RetryInterval*2, done)
+	testingDoBlock(key, LockWaitingDefaultSettings.RetryInterval*2, done)
 	assert.Nil(t, RunWaiting(key, func() error {
 		return nil
 	}))
@@ -49,7 +49,7 @@ func TestRunWaitingError(t *testing.T) {
 	defer func() {
 		<-done
 	}()
-	doBlock(key, LockWaitingDefaultSettings.RetryInterval*2, done)
+	testingDoBlock(key, LockWaitingDefaultSettings.RetryInterval*2, done)
 	assert.EqualError(t, RunWaiting(key, func() error {
 		return fmt.Errorf("run wating is not ok")
 	}), "run wating is not ok")
@@ -67,7 +67,7 @@ func TestLockTimesUp(t *testing.T) {
 	defer func() {
 		<-done
 	}()
-	doBlock(key, 500*time.Millisecond, done)
+	testingDoBlock(key, 500*time.Millisecond, done)
 	assert.EqualError(t, RunWaiting(key, func() error {
 		return nil
 	}), "Time's up! Can not acquire lock key: runwating.error")
@@ -83,7 +83,7 @@ func TestConnectionError(t *testing.T) {
 	defer func() {
 		<-done
 	}()
-	doBlock(key, 100*time.Millisecond, done)
+	testingDoBlock(key, 100*time.Millisecond, done)
 	_redisConfig = &redlock.RedisConfig{
 		Address:        "localhost:6390",
 		Database:       1,
@@ -102,7 +102,7 @@ func TestCanNotAcquire(t *testing.T) {
 	defer func() {
 		<-done
 	}()
-	doBlock(key, 100*time.Millisecond, done)
+	testingDoBlock(key, 100*time.Millisecond, done)
 	lock, err := Acquire(key, DefaultSettings)
 	assert.Nil(t, lock)
 	assert.EqualError(t, err, "Can not acquire lock key: runwating.error")
@@ -118,7 +118,7 @@ func TestRunConnectionError(t *testing.T) {
 	defer func() {
 		<-done
 	}()
-	doBlock(key, 100*time.Millisecond, done)
+	testingDoBlock(key, 100*time.Millisecond, done)
 	SetRedisConfig(&redlock.RedisConfig{
 		Address:        "localhost:6390",
 		Database:       1,
