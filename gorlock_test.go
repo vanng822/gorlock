@@ -45,10 +45,15 @@ func TestRunWaitingError(t *testing.T) {
 }
 
 func TestLockTimesUp(t *testing.T) {
+	tmp := LockWaitingDefaultSettings.RetryTimeout
+	defer func() {
+		LockWaitingDefaultSettings.RetryTimeout = tmp
+	}()
 	LockWaitingDefaultSettings.RetryTimeout = 300 * time.Millisecond
 	key := "runwating.error"
 	doBlock(key, 500*time.Millisecond)
 	assert.EqualError(t, RunWaiting(key, func() error {
 		return nil
 	}), "Time's up! Can not acquire lock key: runwating.error")
+
 }
