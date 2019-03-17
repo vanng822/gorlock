@@ -1,3 +1,14 @@
+// Package gorlock is redis lock for doing certain task executed once at the time.
+//
+// import (
+// 	"fmf"
+//
+// 	"github.com/vanng822/gorlock"
+// )
+// gorlock.Run("somekey", func() error {
+// 	fmt.Println("Doing some job")
+// 	return nil
+// })
 package gorlock
 
 import (
