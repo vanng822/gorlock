@@ -94,7 +94,7 @@ func TestConnectionError(t *testing.T) {
 	lock, err := Acquire(key, DefaultSettings)
 	assert.Nil(t, lock)
 	assert.Error(t, err)
-	assert.Regexp(t, "6390: getsockopt: connection refused", err.Error())
+	assert.Regexp(t, "6390: connect: connection refused", err.Error())
 }
 
 func TestCanNotAcquire(t *testing.T) {
@@ -130,5 +130,5 @@ func TestRunConnectionError(t *testing.T) {
 		return nil
 	})
 	assert.Error(t, err)
-	assert.Regexp(t, "6390: getsockopt: connection refused", err.Error())
+	assert.Regexp(t, "6390: connect: connection refused", err.Error())
 }
