@@ -1,6 +1,6 @@
 module github.com/vanng822/gorlock
 
-go 1.22.2
+go 1.20
 
 require (
 	github.com/gpitfield/redlock v0.0.0-20160910192635-22fd0d932fdf
