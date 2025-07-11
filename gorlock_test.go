@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gpitfield/redlock"
 	"github.com/stretchr/testify/assert"
+	"github.com/vanng822/redlock"
 )
 
 func TestRunOk(t *testing.T) {
