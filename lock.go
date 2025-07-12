@@ -19,23 +19,22 @@ func prefixedKey(key string, prefix string) string {
 func (rl *redlock) lock(key string, timeout time.Duration) (acquired bool, err error) {
 	conn := rl.c.Conn()
 	defer conn.Close()
-	lockKey := prefixedKey(rl.conf.KeyPrefix, key)
 
 	ctx := context.Background()
-	result := conn.SetNX(ctx, lockKey, time.Now().Add(timeout).UnixNano(), timeout)
+	result := conn.SetNX(ctx, key, time.Now().Add(timeout).UnixNano(), timeout)
 
 	if result.Val() {
 		acquired = true
 	} else {
 		var expires int64
-		expires, err = conn.Get(ctx, lockKey).Int64()
+		expires, err = conn.Get(ctx, key).Int64()
 		expireTime := time.Unix(0, expires)
 		if err != nil {
 			acquired = false
 		} else if expireTime.Before(time.Now()) { // try to reset the time
 			newExpires := time.Now().Add(timeout).UnixNano()
 			var newTime int64
-			newTime, err = conn.GetSet(ctx, lockKey, newExpires).Int64()
+			newTime, err = conn.GetSet(ctx, key, newExpires).Int64()
 			if err != nil {
 				return
 			} else if newTime == expires { // we set it
@@ -46,7 +45,7 @@ func (rl *redlock) lock(key string, timeout time.Duration) (acquired bool, err e
 
 	if acquired {
 		expire := int(math.Ceil(timeout.Seconds()))
-		_, err = conn.Expire(ctx, lockKey, time.Duration(expire)*time.Second).Result()
+		_, err = conn.Expire(ctx, key, time.Duration(expire)*time.Second).Result()
 	}
 	return
 }
@@ -58,6 +57,6 @@ func (rl *redlock) unlock(key string) (err error) {
 	if err != nil {
 		return
 	}
-	_, err = conn.Del(context.Background(), prefixedKey(rl.conf.KeyPrefix, key)).Result()
+	_, err = conn.Del(context.Background(), key).Result()
 	return err
 }

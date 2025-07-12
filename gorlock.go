@@ -17,6 +17,8 @@ package gorlock
 import (
 	"fmt"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -29,24 +31,26 @@ func init() {
 	defaultRedlock = newRedLock(&RedisConfig{
 		Address:        "localhost:6379",
 		Database:       1,
-		KeyPrefix:      "gorlock",
-		ConnectTimeout: 30 * time.Second,
+		ConnectTimeout: 5 * time.Second,
 	})
 	defaultSettings = &Settings{
+		KeyPrefix:     "gorlock",
 		LockTimeout:   15 * time.Second,
 		LockWaiting:   false,
-		RetryTimeout:  15 * time.Second,
+		RetryTimeout:  5 * time.Second,
 		RetryInterval: 150 * time.Millisecond,
 	}
 	lockWaitingDefaultSettings = &Settings{
+		KeyPrefix:     "gorlock",
 		LockTimeout:   15 * time.Second,
 		LockWaiting:   true,
-		RetryTimeout:  15 * time.Second,
+		RetryTimeout:  5 * time.Second,
 		RetryInterval: 150 * time.Millisecond,
 	}
 }
 
 type Settings struct {
+	KeyPrefix     string
 	LockTimeout   time.Duration
 	RetryTimeout  time.Duration
 	RetryInterval time.Duration
@@ -57,6 +61,8 @@ type Gorlock interface {
 	Acquire(key string) (bool, error)
 	Unlock(key string) error
 	Close() error
+	WithSettings(settings *Settings) Gorlock
+	WithRedisClient(redisClient *redis.Client) Gorlock
 }
 
 type gorlock struct {
@@ -102,10 +108,32 @@ func (g *gorlock) Unlock(key string) (err error) {
 // Close the gorlock connection
 // If the gorlock is created with NewDefault or NewDefaultWaiting, it will not close the connection
 func (g *gorlock) Close() (err error) {
+	// isDefault true means that we share the default redlock instance
+	// don't close it
 	if g.redlock != nil && !g.isDefault {
 		return g.redlock.close()
 	}
 	return nil
+}
+
+// WithSettings provides a way to set custom settings for the gorlock instance.
+func (g *gorlock) WithSettings(settings *Settings) Gorlock {
+	g.settings = settings
+	return g
+}
+
+// For managing the Redis client self
+// go-redis seems to be the good choice for redis client in Go
+// just expose this to outside world
+func (g *gorlock) WithRedisClient(redisClient *redis.Client) Gorlock {
+	g.redlock = &redlock{
+		c:    redisClient,
+		conf: g.redlock.conf,
+	}
+	// should close the client if self managed the redis client
+	g.isDefault = false
+
+	return g
 }
 
 func New(settings *Settings, redisConfig *RedisConfig) Gorlock {
@@ -118,6 +146,10 @@ func New(settings *Settings, redisConfig *RedisConfig) Gorlock {
 
 // New ..
 func NewDefault() Gorlock {
+	return newDefault()
+}
+
+func newDefault() *gorlock {
 	return &gorlock{
 		redlock:   defaultRedlock,
 		settings:  defaultSettings,
@@ -126,6 +158,10 @@ func NewDefault() Gorlock {
 }
 
 func NewDefaultWaiting() Gorlock {
+	return newDefaultWaiting()
+}
+
+func newDefaultWaiting() *gorlock {
 	return &gorlock{
 		redlock:   defaultRedlock,
 		settings:  lockWaitingDefaultSettings,
@@ -135,29 +171,31 @@ func NewDefaultWaiting() Gorlock {
 
 // Run executes the job if a lock is acquired
 func Run(key string, fn func() error) error {
-	g := NewDefault()
-	acquired, err := g.Acquire(key)
+	g := newDefault()
+	lockKey := prefixedKey(key, g.settings.KeyPrefix)
+	acquired, err := g.Acquire(lockKey)
 	if err != nil {
 		return err
 	}
 	if !acquired {
 		return fmt.Errorf("can not acquire lock key: %s", key)
 	}
-	defer g.Unlock(key)
+	defer g.Unlock(lockKey)
 	return fn()
 }
 
 // RunWaiting waits until acquiring a lock
 // and execute the job
 func RunWaiting(key string, fn func() error) error {
-	g := NewDefaultWaiting()
-	acquired, err := g.Acquire(key)
+	g := newDefaultWaiting()
+	lockKey := prefixedKey(key, g.settings.KeyPrefix)
+	acquired, err := g.Acquire(lockKey)
 	if err != nil {
 		return err
 	}
 	if !acquired {
 		return fmt.Errorf("can not acquire lock key: %s", key)
 	}
-	defer g.Unlock(key)
+	defer g.Unlock(lockKey)
 	return fn()
 }
