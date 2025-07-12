@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gpitfield/redlock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,11 +22,11 @@ func TestRunError(t *testing.T) {
 
 func testingDoBlock(key string, timeout time.Duration, done chan bool) {
 	// should use Lock directly
-	lock := New()
-	lock.Lock(key, 2*timeout)
+	g := NewDefault()
+	g.Acquire(key)
 	go func() {
 		time.Sleep(timeout)
-		lock.Unlock(key)
+		g.Unlock(key)
 		done <- true
 	}()
 }
@@ -38,97 +37,126 @@ func TestRunWaitingOk(t *testing.T) {
 	defer func() {
 		<-done
 	}()
-	testingDoBlock(key, LockWaitingDefaultSettings.RetryInterval*2, done)
+	testingDoBlock(key, lockWaitingDefaultSettings.RetryInterval*2, done)
 	assert.Nil(t, RunWaiting(key, func() error {
 		return nil
 	}))
 }
 
 func TestRunWaitingError(t *testing.T) {
-	key := "runwating.error"
+	key := "runwaiting.error"
 	done := make(chan bool)
 	defer func() {
 		<-done
 	}()
-	testingDoBlock(key, LockWaitingDefaultSettings.RetryInterval*2, done)
+	testingDoBlock(key, lockWaitingDefaultSettings.RetryInterval*5, done)
 	assert.EqualError(t, RunWaiting(key, func() error {
 		return fmt.Errorf("run wating is not ok")
 	}), "run wating is not ok")
 
 }
 
+func TestCanAcquire(t *testing.T) {
+	key := "acquire.ok"
+	waitingDefaultSettings := &Settings{
+		LockTimeout:   15 * time.Second,
+		LockWaiting:   true,
+		RetryTimeout:  100 * time.Millisecond,
+		RetryInterval: 20 * time.Millisecond,
+	}
+
+	redisConfig := &RedisConfig{
+		Address:        "localhost:6379",
+		Database:       1,
+		KeyPrefix:      "gorlock",
+		ConnectTimeout: 30 * time.Second,
+	}
+
+	g := New(waitingDefaultSettings, redisConfig)
+	defer g.Close()
+	lock, err := g.Acquire(key)
+	assert.True(t, lock)
+	assert.NoError(t, err)
+}
+
 func TestLockTimesUp(t *testing.T) {
-	tmp := LockWaitingDefaultSettings.RetryTimeout
-	defer func() {
-		LockWaitingDefaultSettings.RetryTimeout = tmp
-	}()
-	LockWaitingDefaultSettings.RetryTimeout = 300 * time.Millisecond
-	key := "runwating.error"
+	key := "runwating.error.timesup"
 	done := make(chan bool)
 	defer func() {
 		<-done
 	}()
-	testingDoBlock(key, 500*time.Millisecond, done)
-	assert.EqualError(t, RunWaiting(key, func() error {
-		return nil
-	}), "Time's up! Can not acquire lock key: runwating.error")
+	testingDoBlock(key, 200*time.Millisecond, done)
+
+	waitingDefaultSettings := &Settings{
+		LockTimeout:   15 * time.Second,
+		LockWaiting:   true,
+		RetryTimeout:  100 * time.Millisecond,
+		RetryInterval: 20 * time.Millisecond,
+	}
+
+	redisConfig := &RedisConfig{
+		Address:        "localhost:6379",
+		Database:       1,
+		KeyPrefix:      "gorlock",
+		ConnectTimeout: 30 * time.Second,
+	}
+
+	g := New(waitingDefaultSettings, redisConfig)
+	defer g.Close()
+	acquired, err := g.Acquire(key)
+	assert.False(t, acquired)
+	assert.EqualError(t, err, "time's up! Can not acquire lock key: runwating.error.timesup")
 }
 
 func TestConnectionError(t *testing.T) {
-	tmp := *_redisConfig
-	defer func() {
-		*_redisConfig = tmp
-	}()
-	key := "runwating.error"
+	key := "runwaiting.error"
 	done := make(chan bool)
 	defer func() {
 		<-done
 	}()
 	testingDoBlock(key, 100*time.Millisecond, done)
-	_redisConfig = &redlock.RedisConfig{
+	redisConfig := &RedisConfig{
 		Address:        "localhost:6390",
 		Database:       1,
 		KeyPrefix:      "gorlock",
 		ConnectTimeout: 30 * time.Second,
 	}
-	lock, err := Acquire(key, DefaultSettings)
-	assert.Nil(t, lock)
+	g := New(defaultSettings, redisConfig)
+	acquired, err := g.Acquire(key)
+	assert.False(t, acquired)
 	assert.Error(t, err)
 	assert.Regexp(t, "6390: connect: connection refused", err.Error())
 }
 
 func TestCanNotAcquire(t *testing.T) {
-	key := "runwating.error"
+	key := "acquire.error"
 	done := make(chan bool)
 	defer func() {
 		<-done
 	}()
 	testingDoBlock(key, 100*time.Millisecond, done)
-	lock, err := Acquire(key, DefaultSettings)
-	assert.Nil(t, lock)
-	assert.EqualError(t, err, "Can not acquire lock key: runwating.error")
+	g := NewDefault()
+	defer g.Close()
+	lock, err := g.Acquire(key)
+	assert.False(t, lock)
+	assert.EqualError(t, err, "can not acquire lock key: acquire.error")
 }
 
-func TestRunConnectionError(t *testing.T) {
-	tmp := *_redisConfig
-	defer func() {
-		*_redisConfig = tmp
-	}()
-	key := "runwating.error"
+func TestAcquireConnectionError(t *testing.T) {
+	key := "runwaiting.error.connection"
 	done := make(chan bool)
 	defer func() {
 		<-done
 	}()
 	testingDoBlock(key, 100*time.Millisecond, done)
-	SetRedisConfig(&redlock.RedisConfig{
+	g := New(defaultSettings, &RedisConfig{
 		Address:        "localhost:6390",
 		Database:       1,
 		KeyPrefix:      "gorlock",
 		ConnectTimeout: 30 * time.Second,
 	})
-	err := Run(key, func() error {
-		return nil
-	})
+	acquired, err := g.Acquire(key)
+	assert.False(t, acquired)
 	assert.Error(t, err)
 	assert.Regexp(t, "6390: connect: connection refused", err.Error())
 }
