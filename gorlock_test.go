@@ -57,7 +57,7 @@ func TestRunWaitingError(t *testing.T) {
 }
 
 func TestCanAcquire(t *testing.T) {
-	key := "runwating.error"
+	key := "acquire.ok"
 	waitingDefaultSettings := &Settings{
 		LockTimeout:   15 * time.Second,
 		LockWaiting:   true,
@@ -80,7 +80,7 @@ func TestCanAcquire(t *testing.T) {
 }
 
 func TestLockTimesUp(t *testing.T) {
-	key := "runwating.error"
+	key := "runwating.error.timesup"
 	done := make(chan bool)
 	defer func() {
 		<-done
@@ -105,11 +105,11 @@ func TestLockTimesUp(t *testing.T) {
 	defer g.Close()
 	acquired, err := g.Acquire(key)
 	assert.False(t, acquired)
-	assert.EqualError(t, err, "time's up! Can not acquire lock key: runwating.error")
+	assert.EqualError(t, err, "time's up! Can not acquire lock key: runwating.error.timesup")
 }
 
 func TestConnectionError(t *testing.T) {
-	key := "runwating.error"
+	key := "runwaiting.error"
 	done := make(chan bool)
 	defer func() {
 		<-done
@@ -129,7 +129,7 @@ func TestConnectionError(t *testing.T) {
 }
 
 func TestCanNotAcquire(t *testing.T) {
-	key := "runwating.error"
+	key := "acquire.error"
 	done := make(chan bool)
 	defer func() {
 		<-done
@@ -139,11 +139,11 @@ func TestCanNotAcquire(t *testing.T) {
 	defer g.Close()
 	lock, err := g.Acquire(key)
 	assert.False(t, lock)
-	assert.EqualError(t, err, "can not acquire lock key: runwating.error")
+	assert.EqualError(t, err, "can not acquire lock key: acquire.error")
 }
 
-func TestRunConnectionError(t *testing.T) {
-	key := "runwating.error"
+func TestAcquireConnectionError(t *testing.T) {
+	key := "runwaiting.error.connection"
 	done := make(chan bool)
 	defer func() {
 		<-done
