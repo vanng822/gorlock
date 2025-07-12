@@ -17,18 +17,16 @@ package gorlock
 import (
 	"fmt"
 	"time"
-
-	"github.com/vanng822/redlock"
 )
 
 var (
-	_redisConfig               *redlock.RedisConfig
+	_redisConfig               *RedisConfig
 	DefaultSettings            *Settings
 	LockWaitingDefaultSettings *Settings
 )
 
 func init() {
-	_redisConfig = &redlock.RedisConfig{
+	_redisConfig = &RedisConfig{
 		Address:        "localhost:6379",
 		Database:       1,
 		KeyPrefix:      "gorlock",
@@ -55,25 +53,21 @@ type Settings struct {
 	LockWaiting   bool
 }
 
-func SetRedisConfig(config *redlock.RedisConfig) {
+func SetRedisConfig(config *RedisConfig) {
 	_redisConfig = config
 }
 
-func RedisConfig() *redlock.RedisConfig {
-	return _redisConfig
-}
-
 // New ..
-func New() *redlock.Redlock {
-	return redlock.New(RedisConfig())
+func New() *Redlock {
+	return NewRedLock(_redisConfig)
 }
 
 // Acquire a lock and returns it, need to unlock it when done
-func Acquire(key string, settings *Settings) (*redlock.Redlock, error) {
+func Acquire(key string, settings *Settings) (*Redlock, error) {
 	var (
 		acquired bool
 		err      error
-		lock     *redlock.Redlock
+		lock     *Redlock
 	)
 	lock = New()
 	acquired, err = lock.Lock(key, settings.LockTimeout)
@@ -88,7 +82,7 @@ func Acquire(key string, settings *Settings) (*redlock.Redlock, error) {
 		for {
 			select {
 			case <-timesup:
-				return nil, fmt.Errorf("Time's up! Can not acquire lock key: %s", key)
+				return nil, fmt.Errorf("time's up! Can not acquire lock key: %s", key)
 			default:
 				time.Sleep(settings.RetryInterval)
 				acquired, err = lock.Lock(key, settings.LockTimeout)
@@ -101,7 +95,7 @@ func Acquire(key string, settings *Settings) (*redlock.Redlock, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("Can not acquire lock key: %s", key)
+	return nil, fmt.Errorf("can not acquire lock key: %s", key)
 }
 
 // Run executes the job if a lock is acquired

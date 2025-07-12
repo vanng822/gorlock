@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/vanng822/redlock"
 )
 
 func TestRunOk(t *testing.T) {
@@ -71,7 +70,7 @@ func TestLockTimesUp(t *testing.T) {
 	testingDoBlock(key, 500*time.Millisecond, done)
 	assert.EqualError(t, RunWaiting(key, func() error {
 		return nil
-	}), "Time's up! Can not acquire lock key: runwating.error")
+	}), "time's up! Can not acquire lock key: runwating.error")
 }
 
 func TestConnectionError(t *testing.T) {
@@ -85,7 +84,7 @@ func TestConnectionError(t *testing.T) {
 		<-done
 	}()
 	testingDoBlock(key, 100*time.Millisecond, done)
-	_redisConfig = &redlock.RedisConfig{
+	_redisConfig = &RedisConfig{
 		Address:        "localhost:6390",
 		Database:       1,
 		KeyPrefix:      "gorlock",
@@ -106,7 +105,7 @@ func TestCanNotAcquire(t *testing.T) {
 	testingDoBlock(key, 100*time.Millisecond, done)
 	lock, err := Acquire(key, DefaultSettings)
 	assert.Nil(t, lock)
-	assert.EqualError(t, err, "Can not acquire lock key: runwating.error")
+	assert.EqualError(t, err, "can not acquire lock key: runwating.error")
 }
 
 func TestRunConnectionError(t *testing.T) {
@@ -120,7 +119,7 @@ func TestRunConnectionError(t *testing.T) {
 		<-done
 	}()
 	testingDoBlock(key, 100*time.Millisecond, done)
-	SetRedisConfig(&redlock.RedisConfig{
+	SetRedisConfig(&RedisConfig{
 		Address:        "localhost:6390",
 		Database:       1,
 		KeyPrefix:      "gorlock",
