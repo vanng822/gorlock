@@ -44,12 +44,12 @@ func TestRunWaitingOk(t *testing.T) {
 }
 
 func TestRunWaitingError(t *testing.T) {
-	key := "runwating.error"
+	key := "runwaiting.error"
 	done := make(chan bool)
 	defer func() {
 		<-done
 	}()
-	testingDoBlock(key, lockWaitingDefaultSettings.RetryInterval*2, done)
+	testingDoBlock(key, lockWaitingDefaultSettings.RetryInterval*5, done)
 	assert.EqualError(t, RunWaiting(key, func() error {
 		return fmt.Errorf("run wating is not ok")
 	}), "run wating is not ok")
