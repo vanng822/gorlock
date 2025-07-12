@@ -77,9 +77,7 @@ func (rl *redlock) lock(key string, timeout time.Duration) (acquired bool, err e
 func (rl *redlock) unlock(key string) (err error) {
 	conn := rl.c.Conn()
 	defer conn.Close()
-	if err != nil {
-		return
-	}
+
 	_, err = conn.Del(context.Background(), key).Result()
 	return err
 }
