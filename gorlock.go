@@ -136,8 +136,7 @@ func (g *gorlock) WithSettings(settings *Settings) Gorlock {
 // just expose this to outside world
 func (g *gorlock) WithRedisClient(redisClient *redis.Client) Gorlock {
 	g.redlock = &redlock{
-		c:    redisClient,
-		conf: g.redlock.conf,
+		c: redisClient,
 	}
 	// should close the client if self managed the redis client
 	g.isDefault = false

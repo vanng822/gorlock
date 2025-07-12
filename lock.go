@@ -17,8 +17,7 @@ type RedisConfig struct {
 }
 
 type redlock struct {
-	c    *redis.Client
-	conf *RedisConfig
+	c *redis.Client
 }
 
 // newRedLock returns a redlock instance
@@ -32,8 +31,7 @@ func newRedLock(conf *RedisConfig) (rl *redlock) {
 	})
 
 	return &redlock{
-		conf: conf,
-		c:    c,
+		c: c,
 	}
 }
 
