@@ -73,7 +73,8 @@ type gorlock struct {
 
 // Acquire a lock and returns status, need to unlock it when done
 func (g *gorlock) Acquire(key string) (acquired bool, err error) {
-	acquired, err = g.redlock.lock(key, g.settings.LockTimeout)
+	lockKey := g.prefixedKey(key)
+	acquired, err = g.redlock.lock(lockKey, g.settings.LockTimeout)
 	if err != nil {
 		return false, err
 	}
@@ -88,7 +89,7 @@ func (g *gorlock) Acquire(key string) (acquired bool, err error) {
 				return false, fmt.Errorf("time's up! Can not acquire lock key: %s", key)
 			default:
 				time.Sleep(g.settings.RetryInterval)
-				acquired, err = g.redlock.lock(key, g.settings.LockTimeout)
+				acquired, err = g.redlock.lock(lockKey, g.settings.LockTimeout)
 				if err != nil {
 					return false, err
 				}
@@ -101,8 +102,16 @@ func (g *gorlock) Acquire(key string) (acquired bool, err error) {
 	return false, fmt.Errorf("can not acquire lock key: %s", key)
 }
 
+func (g *gorlock) prefixedKey(key string) string {
+	if g.settings.KeyPrefix == "" {
+		return key
+	}
+	return fmt.Sprintf("%s:%s", g.settings.KeyPrefix, key)
+}
+
 func (g *gorlock) Unlock(key string) (err error) {
-	return g.redlock.unlock(key)
+	lockKey := g.prefixedKey(key)
+	return g.redlock.unlock(lockKey)
 }
 
 // Close the gorlock connection
@@ -172,15 +181,14 @@ func newDefaultWaiting() *gorlock {
 // Run executes the job if a lock is acquired
 func Run(key string, fn func() error) error {
 	g := newDefault()
-	lockKey := prefixedKey(key, g.settings.KeyPrefix)
-	acquired, err := g.Acquire(lockKey)
+	acquired, err := g.Acquire(key)
 	if err != nil {
 		return err
 	}
 	if !acquired {
 		return fmt.Errorf("can not acquire lock key: %s", key)
 	}
-	defer g.Unlock(lockKey)
+	defer g.Unlock(key)
 	return fn()
 }
 
@@ -188,14 +196,13 @@ func Run(key string, fn func() error) error {
 // and execute the job
 func RunWaiting(key string, fn func() error) error {
 	g := newDefaultWaiting()
-	lockKey := prefixedKey(key, g.settings.KeyPrefix)
-	acquired, err := g.Acquire(lockKey)
+	acquired, err := g.Acquire(key)
 	if err != nil {
 		return err
 	}
 	if !acquired {
 		return fmt.Errorf("can not acquire lock key: %s", key)
 	}
-	defer g.Unlock(lockKey)
+	defer g.Unlock(key)
 	return fn()
 }
