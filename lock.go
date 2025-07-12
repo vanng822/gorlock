@@ -14,9 +14,9 @@ func prefixedKey(key string, prefix string) string {
 	return fmt.Sprintf("%s:%s", prefix, key)
 }
 
-// Lock tries to acquire a lock on the given connection for the key via SETNX as discussed at http://redis.io/commands/setnx, returning true if successful.
+// lock tries to acquire a lock on the given connection for the key via SETNX as discussed at http://redis.io/commands/setnx, returning true if successful.
 // Timeout is given in milliseconds.
-func (rl *Redlock) Lock(key string, timeout time.Duration) (acquired bool, err error) {
+func (rl *redlock) lock(key string, timeout time.Duration) (acquired bool, err error) {
 	conn := rl.c.Conn()
 	defer conn.Close()
 	lockKey := prefixedKey(rl.conf.KeyPrefix, key)
@@ -51,22 +51,8 @@ func (rl *Redlock) Lock(key string, timeout time.Duration) (acquired bool, err e
 	return
 }
 
-// WaitLock locks the given key for timeout duration, retrying the lock until it succeeds
-// waiting retryInterval duration between retries.
-func (rl *Redlock) WaitLock(key string, timeout time.Duration, retryInterval time.Duration) (acquired bool, err error) {
-	acquired, err = rl.Lock(key, timeout)
-	for !acquired {
-		if err != nil {
-			return false, err
-		}
-		time.Sleep(retryInterval)
-		acquired, err = rl.Lock(key, timeout)
-	}
-	return
-}
-
-// Unlock deletes the given lock key, releasing the lock.
-func (rl *Redlock) Unlock(key string) (err error) {
+// unlock deletes the given lock key, releasing the lock.
+func (rl *redlock) unlock(key string) (err error) {
 	conn := rl.c.Conn()
 	defer conn.Close()
 	if err != nil {
@@ -74,26 +60,4 @@ func (rl *Redlock) Unlock(key string) (err error) {
 	}
 	_, err = conn.Del(context.Background(), prefixedKey(rl.conf.KeyPrefix, key)).Result()
 	return err
-}
-
-// Extend the time on a given lock - only to be called by lock's current holder or delegate
-func (rl *Redlock) Renew(key string, timeout time.Duration) (renewed bool, err error) {
-	conn := rl.c.Conn()
-	defer conn.Close()
-	if err != nil {
-		return false, err
-	}
-
-	lockKey := prefixedKey(rl.conf.KeyPrefix, key)
-	newExpires := time.Now().Add(timeout).UnixNano()
-	renewed, err = conn.GetSet(context.Background(), lockKey, newExpires).Bool()
-	if err != nil {
-		return
-	}
-
-	if renewed {
-		expire := int(math.Ceil(timeout.Seconds()))
-		_, err = conn.Expire(context.Background(), lockKey, time.Duration(expire)*time.Second).Result()
-	}
-	return
 }

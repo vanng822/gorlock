@@ -15,13 +15,13 @@ type RedisConfig struct {
 	WriteTimeout   time.Duration
 }
 
-type Redlock struct {
+type redlock struct {
 	c    *redis.Client
 	conf *RedisConfig
 }
 
-// NewRedLock returns a redlock instance
-func NewRedLock(conf *RedisConfig) (rl *Redlock) {
+// newRedLock returns a redlock instance
+func newRedLock(conf *RedisConfig) (rl *redlock) {
 	c := redis.NewClient(&redis.Options{
 		Addr:         conf.Address,
 		DB:           conf.Database,
@@ -30,14 +30,14 @@ func NewRedLock(conf *RedisConfig) (rl *Redlock) {
 		WriteTimeout: conf.WriteTimeout,
 	})
 
-	return &Redlock{
+	return &redlock{
 		conf: conf,
 		c:    c,
 	}
 }
 
-// Close Redis
-func (rl *Redlock) Close() (err error) {
+// close Redis
+func (rl *redlock) close() (err error) {
 	if rl.c != nil {
 		return rl.c.Close()
 	}

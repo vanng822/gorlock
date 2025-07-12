@@ -20,13 +20,13 @@ import (
 )
 
 var (
-	defaultRedlock             *Redlock
+	defaultRedlock             *redlock
 	defaultSettings            *Settings
 	lockWaitingDefaultSettings *Settings
 )
 
 func init() {
-	defaultRedlock = NewRedLock(&RedisConfig{
+	defaultRedlock = newRedLock(&RedisConfig{
 		Address:        "localhost:6379",
 		Database:       1,
 		KeyPrefix:      "gorlock",
@@ -60,14 +60,14 @@ type Gorlock interface {
 }
 
 type gorlock struct {
-	redlock   *Redlock
+	redlock   *redlock
 	settings  *Settings
 	isDefault bool
 }
 
 // Acquire a lock and returns status, need to unlock it when done
 func (g *gorlock) Acquire(key string) (acquired bool, err error) {
-	acquired, err = g.redlock.Lock(key, g.settings.LockTimeout)
+	acquired, err = g.redlock.lock(key, g.settings.LockTimeout)
 	if err != nil {
 		return false, err
 	}
@@ -82,7 +82,7 @@ func (g *gorlock) Acquire(key string) (acquired bool, err error) {
 				return false, fmt.Errorf("time's up! Can not acquire lock key: %s", key)
 			default:
 				time.Sleep(g.settings.RetryInterval)
-				acquired, err = g.redlock.Lock(key, g.settings.LockTimeout)
+				acquired, err = g.redlock.lock(key, g.settings.LockTimeout)
 				if err != nil {
 					return false, err
 				}
@@ -96,21 +96,21 @@ func (g *gorlock) Acquire(key string) (acquired bool, err error) {
 }
 
 func (g *gorlock) Unlock(key string) (err error) {
-	return g.redlock.Unlock(key)
+	return g.redlock.unlock(key)
 }
 
 // Close the gorlock connection
 // If the gorlock is created with NewDefault or NewDefaultWaiting, it will not close the connection
 func (g *gorlock) Close() (err error) {
 	if g.redlock != nil && !g.isDefault {
-		return g.redlock.Close()
+		return g.redlock.close()
 	}
 	return nil
 }
 
 func New(settings *Settings, redisConfig *RedisConfig) Gorlock {
 	return &gorlock{
-		redlock:   NewRedLock(redisConfig),
+		redlock:   newRedLock(redisConfig),
 		settings:  settings,
 		isDefault: false,
 	}
