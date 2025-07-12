@@ -68,7 +68,6 @@ func TestCanAcquire(t *testing.T) {
 	redisConfig := &RedisConfig{
 		Address:        "localhost:6379",
 		Database:       1,
-		KeyPrefix:      "gorlock",
 		ConnectTimeout: 30 * time.Second,
 	}
 
@@ -97,7 +96,6 @@ func TestLockTimesUp(t *testing.T) {
 	redisConfig := &RedisConfig{
 		Address:        "localhost:6379",
 		Database:       1,
-		KeyPrefix:      "gorlock",
 		ConnectTimeout: 30 * time.Second,
 	}
 
@@ -118,7 +116,6 @@ func TestConnectionError(t *testing.T) {
 	redisConfig := &RedisConfig{
 		Address:        "localhost:6390",
 		Database:       1,
-		KeyPrefix:      "gorlock",
 		ConnectTimeout: 30 * time.Second,
 	}
 	g := New(defaultSettings, redisConfig)
@@ -152,7 +149,6 @@ func TestAcquireConnectionError(t *testing.T) {
 	g := New(defaultSettings, &RedisConfig{
 		Address:        "localhost:6390",
 		Database:       1,
-		KeyPrefix:      "gorlock",
 		ConnectTimeout: 30 * time.Second,
 	})
 	acquired, err := g.Acquire(key)

@@ -9,7 +9,6 @@ import (
 type RedisConfig struct {
 	Address        string // address:port
 	Database       int    // database number to connect to
-	KeyPrefix      string // optional prefix applied to keys
 	ConnectTimeout time.Duration
 	ReadTimeout    time.Duration
 	WriteTimeout   time.Duration
