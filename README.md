@@ -1,6 +1,6 @@
 # gorlock
 
-Redis Lock wrapper for running distributed tasks
+Redis Lock wrapper for running distributed tasks. You can customize settings or configure and manage own redis client.
 
 # Usage
 
