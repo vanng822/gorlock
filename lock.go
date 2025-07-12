@@ -2,17 +2,9 @@ package gorlock
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"time"
 )
-
-func prefixedKey(key string, prefix string) string {
-	if prefix == "" {
-		return key
-	}
-	return fmt.Sprintf("%s:%s", prefix, key)
-}
 
 // lock tries to acquire a lock on the given connection for the key via SETNX as discussed at http://redis.io/commands/setnx, returning true if successful.
 // Timeout is given in milliseconds.

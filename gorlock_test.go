@@ -59,6 +59,7 @@ func TestRunWaitingError(t *testing.T) {
 func TestCanAcquire(t *testing.T) {
 	key := "acquire.ok"
 	waitingDefaultSettings := &Settings{
+		KeyPrefix:     "gorlock",
 		LockTimeout:   15 * time.Second,
 		LockWaiting:   true,
 		RetryTimeout:  100 * time.Millisecond,
@@ -87,6 +88,7 @@ func TestLockTimesUp(t *testing.T) {
 	testingDoBlock(key, 200*time.Millisecond, done)
 
 	waitingDefaultSettings := &Settings{
+		KeyPrefix:     "gorlock",
 		LockTimeout:   15 * time.Second,
 		LockWaiting:   true,
 		RetryTimeout:  100 * time.Millisecond,
