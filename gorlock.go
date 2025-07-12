@@ -20,25 +20,25 @@ import (
 )
 
 var (
-	_redisConfig               *RedisConfig
-	DefaultSettings            *Settings
-	LockWaitingDefaultSettings *Settings
+	defaultRedlock             *Redlock
+	defaultSettings            *Settings
+	lockWaitingDefaultSettings *Settings
 )
 
 func init() {
-	_redisConfig = &RedisConfig{
+	defaultRedlock = NewRedLock(&RedisConfig{
 		Address:        "localhost:6379",
 		Database:       1,
 		KeyPrefix:      "gorlock",
 		ConnectTimeout: 30 * time.Second,
-	}
-	DefaultSettings = &Settings{
+	})
+	defaultSettings = &Settings{
 		LockTimeout:   15 * time.Second,
 		LockWaiting:   false,
 		RetryTimeout:  15 * time.Second,
 		RetryInterval: 150 * time.Millisecond,
 	}
-	LockWaitingDefaultSettings = &Settings{
+	lockWaitingDefaultSettings = &Settings{
 		LockTimeout:   15 * time.Second,
 		LockWaiting:   true,
 		RetryTimeout:  15 * time.Second,
@@ -53,68 +53,111 @@ type Settings struct {
 	LockWaiting   bool
 }
 
-func SetRedisConfig(config *RedisConfig) {
-	_redisConfig = config
+type Gorlock interface {
+	Acquire(key string) (bool, error)
+	Unlock(key string) error
+	Close() error
 }
 
-// New ..
-func New() *Redlock {
-	return NewRedLock(_redisConfig)
+type gorlock struct {
+	redlock   *Redlock
+	settings  *Settings
+	isDefault bool
 }
 
-// Acquire a lock and returns it, need to unlock it when done
-func Acquire(key string, settings *Settings) (*Redlock, error) {
-	var (
-		acquired bool
-		err      error
-		lock     *Redlock
-	)
-	lock = New()
-	acquired, err = lock.Lock(key, settings.LockTimeout)
+// Acquire a lock and returns status, need to unlock it when done
+func (g *gorlock) Acquire(key string) (acquired bool, err error) {
+	acquired, err = g.redlock.Lock(key, g.settings.LockTimeout)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 	if acquired {
-		return lock, nil
+		return true, nil
 	}
-	if settings.LockWaiting {
-		timesup := time.After(settings.RetryTimeout)
+	if g.settings.LockWaiting {
+		timesup := time.After(g.settings.RetryTimeout)
 		for {
 			select {
 			case <-timesup:
-				return nil, fmt.Errorf("time's up! Can not acquire lock key: %s", key)
+				return false, fmt.Errorf("time's up! Can not acquire lock key: %s", key)
 			default:
-				time.Sleep(settings.RetryInterval)
-				acquired, err = lock.Lock(key, settings.LockTimeout)
+				time.Sleep(g.settings.RetryInterval)
+				acquired, err = g.redlock.Lock(key, g.settings.LockTimeout)
 				if err != nil {
-					return nil, err
+					return false, err
 				}
 				if acquired {
-					return lock, nil
+					return true, nil
 				}
 			}
 		}
 	}
-	return nil, fmt.Errorf("can not acquire lock key: %s", key)
+	return false, fmt.Errorf("can not acquire lock key: %s", key)
+}
+
+func (g *gorlock) Unlock(key string) (err error) {
+	return g.redlock.Unlock(key)
+}
+
+// Close the gorlock connection
+// If the gorlock is created with NewDefault or NewDefaultWaiting, it will not close the connection
+func (g *gorlock) Close() (err error) {
+	if g.redlock != nil && !g.isDefault {
+		return g.redlock.Close()
+	}
+	return nil
+}
+
+func New(settings *Settings, redisConfig *RedisConfig) Gorlock {
+	return &gorlock{
+		redlock:   NewRedLock(redisConfig),
+		settings:  settings,
+		isDefault: false,
+	}
+}
+
+// New ..
+func NewDefault() Gorlock {
+	return &gorlock{
+		redlock:   defaultRedlock,
+		settings:  defaultSettings,
+		isDefault: true,
+	}
+}
+
+func NewDefaultWaiting() Gorlock {
+	return &gorlock{
+		redlock:   defaultRedlock,
+		settings:  lockWaitingDefaultSettings,
+		isDefault: true,
+	}
 }
 
 // Run executes the job if a lock is acquired
 func Run(key string, fn func() error) error {
-	lock, err := Acquire(key, DefaultSettings)
+	g := NewDefault()
+	acquired, err := g.Acquire(key)
 	if err != nil {
 		return err
 	}
-	defer lock.Unlock(key)
+	if !acquired {
+		return fmt.Errorf("can not acquire lock key: %s", key)
+	}
+	defer g.Unlock(key)
 	return fn()
 }
 
 // RunWaiting waits until acquiring a lock
 // and execute the job
 func RunWaiting(key string, fn func() error) error {
-	lock, err := Acquire(key, LockWaitingDefaultSettings)
+	g := NewDefaultWaiting()
+	acquired, err := g.Acquire(key)
 	if err != nil {
 		return err
 	}
-	defer lock.Unlock(key)
+	if !acquired {
+		return fmt.Errorf("can not acquire lock key: %s", key)
+	}
+	defer g.Unlock(key)
 	return fn()
 }
