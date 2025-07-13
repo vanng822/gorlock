@@ -63,6 +63,7 @@ type Gorlock interface {
 	Close() error
 	WithSettings(settings *Settings) Gorlock
 	WithRedisClient(redisClient *redis.Client) Gorlock
+	Run(key string, fn func() error) error
 }
 
 type gorlock struct {
@@ -144,6 +145,18 @@ func (g *gorlock) WithRedisClient(redisClient *redis.Client) Gorlock {
 	return g
 }
 
+func (g *gorlock) Run(key string, fn func() error) error {
+	acquired, err := g.Acquire(key)
+	if err != nil {
+		return err
+	}
+	if !acquired {
+		return fmt.Errorf("can not acquire lock key: %s", key)
+	}
+	defer g.Unlock(key)
+	return fn()
+}
+
 func New(settings *Settings, redisConfig *RedisConfig) Gorlock {
 	return &gorlock{
 		redlock:   newRedLock(redisConfig),
@@ -180,28 +193,12 @@ func newDefaultWaiting() *gorlock {
 // Run executes the job if a lock is acquired
 func Run(key string, fn func() error) error {
 	g := newDefault()
-	acquired, err := g.Acquire(key)
-	if err != nil {
-		return err
-	}
-	if !acquired {
-		return fmt.Errorf("can not acquire lock key: %s", key)
-	}
-	defer g.Unlock(key)
-	return fn()
+	return g.Run(key, fn)
 }
 
 // RunWaiting waits until acquiring a lock
 // and execute the job
 func RunWaiting(key string, fn func() error) error {
 	g := newDefaultWaiting()
-	acquired, err := g.Acquire(key)
-	if err != nil {
-		return err
-	}
-	if !acquired {
-		return fmt.Errorf("can not acquire lock key: %s", key)
-	}
-	defer g.Unlock(key)
-	return fn()
+	return g.Run(key, fn)
 }
