@@ -43,20 +43,20 @@ Or
 
   // setting up own config/settings
   redisConfig := RedisConfig{
-		Address:        "localhost:6379",
-		Database:       0,
-		ConnectTimeout: 3 * time.Second,
-	}
+    Address:        "localhost:6379",
+    Database:       0,
+    ConnectTimeout: 3 * time.Second,
+  }
 
-  waitingDefaultSettings := Settings{
-		KeyPrefix:     "gorlock",
-		LockTimeout:   10 * time.Second,
-		LockWaiting:   true,
-		RetryTimeout:  3 * time.Second,
-		RetryInterval: 100 * time.Millisecond,
-	}
+  waitingSettings := Settings{
+    KeyPrefix:     "gorlock",
+    LockTimeout:   10 * time.Second,
+    LockWaiting:   true,
+    RetryTimeout:  3 * time.Second,
+    RetryInterval: 100 * time.Millisecond,
+  }
   
-  lock := gorlock.New(&waitingDefaultSettings, &redisConfig)
+  lock := gorlock.New(&waitingSettings, &redisConfig)
 
   // Wait for the lock if it is already locked due to LockWaiting=true
   lock.Run("somekey", func() error {
