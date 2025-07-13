@@ -42,13 +42,13 @@ Or
   )
 
   // setting up own config/settings
-  redisConfig := RedisConfig{
+  redisConfig := gorlock.RedisConfig{
     Address:        "localhost:6379",
     Database:       0,
     ConnectTimeout: 3 * time.Second,
   }
 
-  waitingSettings := Settings{
+  waitingSettings := gorlock.Settings{
     KeyPrefix:     "gorlock",
     LockTimeout:   10 * time.Second,
     LockWaiting:   true,
