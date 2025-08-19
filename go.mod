@@ -4,7 +4,7 @@ go 1.23.0
 
 require github.com/stretchr/testify v1.10.0
 
-require github.com/redis/go-redis/v9 v9.11.0
+require github.com/redis/go-redis/v9 v9.12.1
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
