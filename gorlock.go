@@ -58,7 +58,7 @@ type Settings struct {
 }
 
 type Gorlock interface {
-	Acquire(key string) (bool, error)
+	Lock(key string) (bool, error)
 	Unlock(key string) error
 	Close() error
 	WithSettings(settings *Settings) Gorlock
@@ -72,8 +72,8 @@ type gorlock struct {
 	isDefault bool
 }
 
-// Acquire a lock and returns status, need to unlock it when done
-func (g *gorlock) Acquire(key string) (acquired bool, err error) {
+// Lock a lock and returns status, need to unlock it when done
+func (g *gorlock) Lock(key string) (acquired bool, err error) {
 	lockKey := g.prefixedKey(key)
 	acquired, err = g.redlock.lock(lockKey, g.settings.LockTimeout)
 	if err != nil {
@@ -146,7 +146,7 @@ func (g *gorlock) WithRedisClient(redisClient *redis.Client) Gorlock {
 }
 
 func (g *gorlock) Run(key string, fn func() error) error {
-	acquired, err := g.Acquire(key)
+	acquired, err := g.Lock(key)
 	if err != nil {
 		return err
 	}

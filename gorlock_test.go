@@ -23,7 +23,7 @@ func TestRunError(t *testing.T) {
 func testingDoBlock(key string, timeout time.Duration, done chan bool) {
 	// should use Lock directly
 	g := NewDefault()
-	g.Acquire(key)
+	g.Lock(key)
 	go func() {
 		time.Sleep(timeout)
 		g.Unlock(key)
@@ -74,7 +74,7 @@ func TestCanAcquire(t *testing.T) {
 
 	g := New(waitingDefaultSettings, redisConfig)
 	defer g.Close()
-	lock, err := g.Acquire(key)
+	lock, err := g.Lock(key)
 	assert.True(t, lock)
 	assert.NoError(t, err)
 }
@@ -103,7 +103,7 @@ func TestLockTimesUp(t *testing.T) {
 
 	g := New(waitingDefaultSettings, redisConfig)
 	defer g.Close()
-	acquired, err := g.Acquire(key)
+	acquired, err := g.Lock(key)
 	assert.False(t, acquired)
 	assert.EqualError(t, err, "time's up! Can not acquire lock key: runwating.error.timesup")
 }
@@ -121,7 +121,7 @@ func TestConnectionError(t *testing.T) {
 		ConnectTimeout: 30 * time.Second,
 	}
 	g := New(defaultSettings, redisConfig)
-	acquired, err := g.Acquire(key)
+	acquired, err := g.Lock(key)
 	assert.False(t, acquired)
 	assert.Error(t, err)
 	assert.Regexp(t, "6390: connect: connection refused", err.Error())
@@ -136,7 +136,7 @@ func TestCanNotAcquire(t *testing.T) {
 	testingDoBlock(key, 100*time.Millisecond, done)
 	g := NewDefault()
 	defer g.Close()
-	lock, err := g.Acquire(key)
+	lock, err := g.Lock(key)
 	assert.False(t, lock)
 	assert.EqualError(t, err, "can not acquire lock key: acquire.error")
 }
@@ -153,7 +153,7 @@ func TestAcquireConnectionError(t *testing.T) {
 		Database:       1,
 		ConnectTimeout: 30 * time.Second,
 	})
-	acquired, err := g.Acquire(key)
+	acquired, err := g.Lock(key)
 	assert.False(t, acquired)
 	assert.Error(t, err)
 	assert.Regexp(t, "6390: connect: connection refused", err.Error())
