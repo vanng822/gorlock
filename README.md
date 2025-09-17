@@ -6,7 +6,7 @@ Redis Lock wrapper for running distributed tasks. You can customize settings or 
 
 ```go
   import (
-    "fmf"
+    "fmt"
     
     "github.com/vanng822/gorlock"
   )
@@ -21,7 +21,7 @@ Or
 
 ```go
   import (
-    "fmf"
+    "fmt"
     
     "github.com/vanng822/gorlock"
   )
@@ -36,7 +36,7 @@ Or
 
 ```go
   import (
-    "fmf"
+    "fmt"
     
     "github.com/vanng822/gorlock"
   )
