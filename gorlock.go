@@ -54,6 +54,14 @@ func InitDefaultRedisClient() {
 		}))
 }
 
+func SetDefaultRedisClient(redisClient *redis.Client) {
+	defaultRedlock.Store(
+		&redlock{
+			c: redisClient,
+		},
+	)
+}
+
 func getDefaultRedisClient() *redlock {
 	if r := defaultRedlock.Load(); r != nil {
 		return r
