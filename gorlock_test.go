@@ -5,10 +5,29 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRunOk(t *testing.T) {
+	assert.Nil(t, Run("run.ok", func() error {
+		return nil
+	}))
+}
+
+func TestSetDefaultRedisClientRunOk(t *testing.T) {
+	conf := RedisConfig{
+		Address:        "localhost:6379",
+		Database:       1,
+		ConnectTimeout: 5 * time.Second,
+	}
+	SetDefaultRedisClient(redis.NewClient(&redis.Options{
+		Addr:         conf.Address,
+		DB:           conf.Database,
+		DialTimeout:  conf.ConnectTimeout,
+		ReadTimeout:  conf.ReadTimeout,
+		WriteTimeout: conf.WriteTimeout,
+	}))
 	assert.Nil(t, Run("run.ok", func() error {
 		return nil
 	}))
