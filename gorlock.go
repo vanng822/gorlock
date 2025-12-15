@@ -16,23 +16,19 @@ package gorlock
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
 var (
-	defaultRedlock             *redlock
+	defaultRedlock             atomic.Pointer[redlock]
 	defaultSettings            *Settings
 	lockWaitingDefaultSettings *Settings
 )
 
 func init() {
-	defaultRedlock = newRedLock(&RedisConfig{
-		Address:        "localhost:6379",
-		Database:       1,
-		ConnectTimeout: 5 * time.Second,
-	})
 	defaultSettings = &Settings{
 		KeyPrefix:     "gorlock",
 		LockTimeout:   15 * time.Second,
@@ -47,6 +43,22 @@ func init() {
 		RetryTimeout:  5 * time.Second,
 		RetryInterval: 150 * time.Millisecond,
 	}
+}
+
+func InitDefaultRedisClient() {
+	defaultRedlock.Store(
+		newRedLock(&RedisConfig{
+			Address:        "localhost:6379",
+			Database:       1,
+			ConnectTimeout: 5 * time.Second,
+		}))
+}
+
+func getDefaultRedisClient() *redlock {
+	if r := defaultRedlock.Load(); r != nil {
+		return r
+	}
+	panic("InitDefaultRedisClient must be called first")
 }
 
 type Settings struct {
@@ -172,7 +184,7 @@ func NewDefault() Gorlock {
 
 func newDefault() *gorlock {
 	return &gorlock{
-		redlock:   defaultRedlock,
+		redlock:   getDefaultRedisClient(),
 		settings:  defaultSettings,
 		isDefault: true,
 	}
@@ -184,7 +196,7 @@ func NewDefaultWaiting() Gorlock {
 
 func newDefaultWaiting() *gorlock {
 	return &gorlock{
-		redlock:   defaultRedlock,
+		redlock:   getDefaultRedisClient(),
 		settings:  lockWaitingDefaultSettings,
 		isDefault: true,
 	}
