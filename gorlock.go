@@ -62,7 +62,11 @@ func SetDefaultRedisClient(redisClient *redis.Client) {
 	)
 }
 
-func getDefaultRedisClient() *redlock {
+func HasDefaultRedisClient() bool {
+	return defaultRedlock.Load() != nil
+}
+
+func mustDefaultRedisClient() *redlock {
 	if r := defaultRedlock.Load(); r != nil {
 		return r
 	}
@@ -192,7 +196,7 @@ func NewDefault() Gorlock {
 
 func newDefault() *gorlock {
 	return &gorlock{
-		redlock:   getDefaultRedisClient(),
+		redlock:   mustDefaultRedisClient(),
 		settings:  defaultSettings,
 		isDefault: true,
 	}
@@ -204,7 +208,7 @@ func NewDefaultWaiting() Gorlock {
 
 func newDefaultWaiting() *gorlock {
 	return &gorlock{
-		redlock:   getDefaultRedisClient(),
+		redlock:   mustDefaultRedisClient(),
 		settings:  lockWaitingDefaultSettings,
 		isDefault: true,
 	}
