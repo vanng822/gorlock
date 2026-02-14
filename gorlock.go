@@ -46,6 +46,10 @@ func init() {
 }
 
 func InitDefaultRedisClient() {
+	// either init the default redis client or let user set it by themselves
+	if HasDefaultRedisClient() {
+		return
+	}
 	defaultRedlock.Store(
 		newRedLock(&RedisConfig{
 			Address:        "localhost:6379",
